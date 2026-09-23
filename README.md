@@ -45,8 +45,3 @@ src/
 ├── App.tsx
 └── main.tsx
 ```
-
-## Notes for reviewers
-
-- JSONPlaceholder only exposes 10 users. `src/utils/helpers.ts` (`expandEmployees`) deterministically expands the fetched roster into a 500-record working set so pagination and virtualization have a realistic volume to operate on. Every record is still a variation of a real fetched user, not invented data; see `SPEC.md` for the full reasoning.
-- A companion `SPEC.md`, in the parent folder, documents every file, library choice and decision made while building this, for interview prep purposes. It is not part of the submission.
