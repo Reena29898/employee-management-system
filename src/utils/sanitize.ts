@@ -1,11 +1,6 @@
-/**
- * Defensive input handling for anything that originates outside our own
- * code: form input and API data. React already escapes text it renders, so
- * this isn't a substitute for that, it's the layer that keeps bad input out
- * of state in the first place (and out of the CSV/JSON export downstream).
- */
-
-/** Strips tags and control characters, then trims. Safe to store in state. */
+// Strips tags and control characters, then trims. Used on form input and
+// API data before either touches state, since React's escaping alone
+// doesn't stop bad data from ending up in the CSV/JSON export.
 export function sanitizeText(input: string): string {
   return input
     .replace(/<[^>]*>/g, '')

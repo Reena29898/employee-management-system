@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { DEPARTMENTS, type Department } from '../types/employee'
 
 interface FilterPanelProps {
@@ -5,11 +6,23 @@ interface FilterPanelProps {
   onChange: (departments: Department[]) => void
 }
 
-/**
- * A native <details>/<summary> disclosure, so the expand/collapse behaviour
- * and keyboard support come from the browser instead of custom ARIA.
- */
+// Native <details>/<summary> for free keyboard support. It doesn't close on
+// an outside click by default though, so that's handled manually below.
 export function FilterPanel({ selectedDepartments, onChange }: FilterPanelProps) {
+  const detailsRef = useRef<HTMLDetailsElement>(null)
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      const details = detailsRef.current
+      if (details?.open && !details.contains(event.target as Node)) {
+        details.open = false
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
+
   function toggleDepartment(department: Department) {
     const isSelected = selectedDepartments.includes(department)
     onChange(
@@ -25,8 +38,8 @@ export function FilterPanel({ selectedDepartments, onChange }: FilterPanelProps)
       : `Department: ${selectedDepartments.length} selected`
 
   return (
-    <details className="relative">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+    <details ref={detailsRef} className="relative">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md border border-hairline-strong px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-canvas-soft [&::-webkit-details-marker]:hidden">
         <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
           <path
             fillRule="evenodd"
@@ -36,16 +49,16 @@ export function FilterPanel({ selectedDepartments, onChange }: FilterPanelProps)
         </svg>
         {summaryLabel}
       </summary>
-      <fieldset className="absolute z-10 mt-2 w-56 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
-        <legend className="mb-2 px-0 text-xs font-semibold uppercase text-slate-500">Department</legend>
+      <fieldset className="absolute z-10 mt-2 w-56 rounded-md border border-hairline bg-canvas p-3 shadow-level-2">
+        <legend className="mb-2 px-0 text-xs font-semibold uppercase text-ink-muted">Department</legend>
         <div className="space-y-2">
           {DEPARTMENTS.map((department) => (
-            <label key={department} className="flex items-center gap-2 text-sm text-slate-700">
+            <label key={department} className="flex items-center gap-2 text-sm text-ink-secondary">
               <input
                 type="checkbox"
                 checked={selectedDepartments.includes(department)}
                 onChange={() => toggleDepartment(department)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-hairline-strong text-primary focus:ring-primary"
               />
               {department}
             </label>
@@ -55,7 +68,7 @@ export function FilterPanel({ selectedDepartments, onChange }: FilterPanelProps)
           <button
             type="button"
             onClick={() => onChange([])}
-            className="mt-3 text-xs font-medium text-blue-600 hover:underline"
+            className="mt-3 text-xs font-medium text-primary hover:underline"
           >
             Clear filter
           </button>

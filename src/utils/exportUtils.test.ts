@@ -21,18 +21,10 @@ describe('employeesToCsv', () => {
     expect(lines[1]).toContain('alice.nguyen@example.com')
   })
 
-  it('neutralizes a value that looks like a spreadsheet formula', () => {
-    const malicious: Employee = { ...employee, role: '=cmd|"/c calc"!A0' }
-    const csv = employeesToCsv([malicious])
-    // the cell must be prefixed with a quote so spreadsheet apps treat it as text
-    expect(csv).toContain("'=cmd")
-  })
-
-  it('neutralizes +, - and @ prefixed values too', () => {
-    for (const prefix of ['+', '-', '@']) {
-      const malicious: Employee = { ...employee, role: `${prefix}SUM(A1:A9)` }
-      const csv = employeesToCsv([malicious])
-      expect(csv).toContain(`'${prefix}SUM`)
+  it('neutralizes formula-injection prefixes (=, +, -, @)', () => {
+    for (const prefix of ['=', '+', '-', '@']) {
+      const malicious: Employee = { ...employee, role: `${prefix}cmd|"/c calc"!A0` }
+      expect(employeesToCsv([malicious])).toContain(`'${prefix}cmd`)
     }
   })
 

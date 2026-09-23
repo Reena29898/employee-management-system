@@ -1,5 +1,34 @@
 @import 'tailwindcss';
 
+/* Theme tokens (Stripe-style indigo/slate palette) registered as real Tailwind utilities. */
+@theme {
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #f8fafc;
+
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-primary-soft: #eef2ff;
+
+  --color-ink: #0f172a;
+  --color-ink-secondary: #334155;
+  --color-ink-muted: #64748b;
+
+  --color-hairline: #e2e8f0;
+  --color-hairline-strong: #cbd5e1;
+
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3c7;
+  --color-neutral: #475569;
+  --color-neutral-soft: #f1f5f9;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+
+  --shadow-level-1: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-level-2: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
 :root {
   color-scheme: light;
 }
@@ -11,12 +40,19 @@ body {
     'Segoe UI',
     Roboto,
     sans-serif;
+  background: var(--color-canvas-soft);
+  color: var(--color-ink);
 }
 
 /* Visible focus ring for keyboard users, required for WCAG 2.4.7 */
 :focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* Money/id/count columns should not visually jitter as digits change */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Utility used to hide content visually while keeping it available to screen readers */

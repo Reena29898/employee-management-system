@@ -1,11 +1,15 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { DEPARTMENTS, STATUSES } from '../types/employee'
-import type { EmployeeFormErrors, EmployeeFormValues, NewEmployee } from '../types/employee'
+import type { Employee, EmployeeFormErrors, EmployeeFormValues, NewEmployee } from '../types/employee'
 import { isValidEmail, isValidName, isValidRole, sanitizeText } from '../utils/sanitize'
+import { findEmailDuplicate } from '../utils/duplicates'
 
 interface EmployeeFormProps {
   initialValues?: EmployeeFormValues
+  /** The record being edited, excluded from its own duplicate-email check. */
+  editingId?: number
   submitLabel?: string
+  employees: Employee[]
   onSubmit: (employee: NewEmployee) => void
   onCancel: () => void
 }
@@ -19,7 +23,9 @@ const EMPTY_VALUES: EmployeeFormValues = {
   status: 'Active',
 }
 
-function validate(values: EmployeeFormValues): EmployeeFormErrors {
+const FIELD_ORDER: (keyof EmployeeFormValues)[] = ['firstName', 'lastName', 'email', 'department', 'role']
+
+function validate(values: EmployeeFormValues, employees: Employee[], editingId?: number): EmployeeFormErrors {
   const errors: EmployeeFormErrors = {}
 
   if (!values.firstName.trim()) {
@@ -38,6 +44,11 @@ function validate(values: EmployeeFormValues): EmployeeFormErrors {
     errors.email = 'Email is required.'
   } else if (!isValidEmail(values.email)) {
     errors.email = 'Enter a valid email address.'
+  } else {
+    const duplicate = findEmailDuplicate(values.email, employees, editingId)
+    if (duplicate) {
+      errors.email = `This employee has already been added, as ${duplicate.firstName} ${duplicate.lastName} (${duplicate.department} · ${duplicate.role}).`
+    }
   }
 
   if (!values.department) {
@@ -53,9 +64,19 @@ function validate(values: EmployeeFormValues): EmployeeFormErrors {
   return errors
 }
 
-export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSubmit, onCancel }: EmployeeFormProps) {
+export function EmployeeForm({
+  initialValues,
+  editingId,
+  submitLabel = 'Add employee',
+  employees,
+  onSubmit,
+  onCancel,
+}: EmployeeFormProps) {
   const [values, setValues] = useState<EmployeeFormValues>(initialValues ?? EMPTY_VALUES)
   const [errors, setErrors] = useState<EmployeeFormErrors>({})
+  const fieldRefs = useRef<Partial<Record<keyof EmployeeFormValues, HTMLInputElement | HTMLSelectElement | null>>>(
+    {},
+  )
 
   function handleChange<K extends keyof EmployeeFormValues>(field: K, value: EmployeeFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -63,9 +84,14 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const validationErrors = validate(values)
+    const validationErrors = validate(values, employees, editingId)
     setErrors(validationErrors)
-    if (Object.keys(validationErrors).length > 0) return
+
+    const firstInvalidField = FIELD_ORDER.find((field) => validationErrors[field])
+    if (firstInvalidField) {
+      fieldRefs.current[firstInvalidField]?.focus()
+      return
+    }
 
     onSubmit({
       firstName: sanitizeText(values.firstName),
@@ -83,6 +109,11 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
         <Field label="First name" htmlFor="firstName" error={errors.firstName}>
           <input
             id="firstName"
+            name="firstName"
+            autoComplete="given-name"
+            ref={(el) => {
+              fieldRefs.current.firstName = el
+            }}
             value={values.firstName}
             onChange={(event) => handleChange('firstName', event.target.value)}
             aria-invalid={Boolean(errors.firstName)}
@@ -94,6 +125,11 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
         <Field label="Last name" htmlFor="lastName" error={errors.lastName}>
           <input
             id="lastName"
+            name="lastName"
+            autoComplete="family-name"
+            ref={(el) => {
+              fieldRefs.current.lastName = el
+            }}
             value={values.lastName}
             onChange={(event) => handleChange('lastName', event.target.value)}
             aria-invalid={Boolean(errors.lastName)}
@@ -106,7 +142,14 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
       <Field label="Email" htmlFor="email" error={errors.email}>
         <input
           id="email"
+          name="email"
           type="email"
+          inputMode="email"
+          autoComplete="email"
+          spellCheck={false}
+          ref={(el) => {
+            fieldRefs.current.email = el
+          }}
           value={values.email}
           onChange={(event) => handleChange('email', event.target.value)}
           aria-invalid={Boolean(errors.email)}
@@ -119,6 +162,10 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
         <Field label="Department" htmlFor="department" error={errors.department}>
           <select
             id="department"
+            name="department"
+            ref={(el) => {
+              fieldRefs.current.department = el
+            }}
             value={values.department}
             onChange={(event) => handleChange('department', event.target.value as EmployeeFormValues['department'])}
             aria-invalid={Boolean(errors.department)}
@@ -137,6 +184,7 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
         <Field label="Status" htmlFor="status">
           <select
             id="status"
+            name="status"
             value={values.status}
             onChange={(event) => handleChange('status', event.target.value as EmployeeFormValues['status'])}
             className={inputClassName(false)}
@@ -153,6 +201,11 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
       <Field label="Role" htmlFor="role" error={errors.role}>
         <input
           id="role"
+          name="role"
+          autoComplete="organization-title"
+          ref={(el) => {
+            fieldRefs.current.role = el
+          }}
           value={values.role}
           onChange={(event) => handleChange('role', event.target.value)}
           aria-invalid={Boolean(errors.role)}
@@ -165,13 +218,13 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-md border border-hairline-strong px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-canvas-soft"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
         >
           {submitLabel}
         </button>
@@ -181,10 +234,10 @@ export function EmployeeForm({ initialValues, submitLabel = 'Add employee', onSu
 }
 
 function inputClassName(hasError: boolean): string {
-  return `w-full rounded-md border px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 ${
+  return `w-full rounded-md border px-3 py-2 text-sm text-ink focus:outline-none focus:ring-1 ${
     hasError
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-      : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500'
+      ? 'border-danger focus:border-danger focus:ring-danger'
+      : 'border-hairline-strong focus:border-primary focus:ring-primary'
   }`
 }
 
@@ -198,12 +251,12 @@ interface FieldProps {
 function Field({ label, htmlFor, error, children }: FieldProps) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor={htmlFor} className="mb-1 block text-sm font-medium text-ink-secondary">
         {label}
       </label>
       {children}
       {error && (
-        <p id={`${htmlFor}-error`} role="alert" className="mt-1 text-xs text-red-600">
+        <p id={`${htmlFor}-error`} role="alert" className="mt-1 text-xs text-danger">
           {error}
         </p>
       )}

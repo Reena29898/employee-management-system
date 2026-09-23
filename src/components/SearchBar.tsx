@@ -6,11 +6,8 @@ interface SearchBarProps {
   debounceMs?: number
 }
 
-/**
- * Keeps its own local input state so typing feels instant, but only reports
- * the value to the parent after `debounceMs` of no typing, so filtering
- * doesn't recompute on every keystroke.
- */
+// Local state so typing feels instant; only reports to the parent after
+// debounceMs, so filtering isn't recomputed on every keystroke.
 export function SearchBar({ onSearch, debounceMs = 300 }: SearchBarProps) {
   const [term, setTerm] = useState('')
   const debouncedTerm = useDebounce(term, debounceMs)
@@ -29,7 +26,7 @@ export function SearchBar({ onSearch, debounceMs = 300 }: SearchBarProps) {
           aria-hidden="true"
           viewBox="0 0 20 20"
           fill="currentColor"
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
         >
           <path
             fillRule="evenodd"
@@ -40,10 +37,13 @@ export function SearchBar({ onSearch, debounceMs = 300 }: SearchBarProps) {
         <input
           id="employee-search"
           type="search"
+          name="employee-search"
+          autoComplete="off"
+          spellCheck={false}
           value={term}
           onChange={(event) => setTerm(event.target.value)}
           placeholder="Search by name, email or role…"
-          className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-md border border-hairline-strong bg-canvas py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
     </div>

@@ -36,3 +36,14 @@ export interface EmployeeFormValues {
 }
 
 export type EmployeeFormErrors = Partial<Record<keyof EmployeeFormValues, string>>
+
+export const SORT_KEYS = ['id', 'name', 'email', 'department', 'role', 'status'] as const
+
+export type SortKey = (typeof SORT_KEYS)[number]
+
+export type SortDirection = 'asc' | 'desc'
+
+export interface SortState {
+  key: SortKey
+  direction: SortDirection
+}

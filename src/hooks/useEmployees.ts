@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchEmployees, EmployeeApiError } from '../services/employeeApi'
-import { expandEmployees, nextEmployeeId } from '../utils/helpers'
+import { buildEmployeeRoster, nextEmployeeId } from '../utils/helpers'
 import type { Employee, NewEmployee } from '../types/employee'
-
-// How large the working dataset is expanded to, so pagination and
-// virtualization have a realistic volume to operate on. See helpers.ts.
-const TARGET_DATASET_SIZE = 500
 
 export type FetchStatus = 'loading' | 'success' | 'error'
 
@@ -19,13 +15,8 @@ interface UseEmployeesResult {
   refetch: () => void
 }
 
-/**
- * Owns the single source of truth for the employee roster: fetches it once
- * from the API, and exposes create/delete against that in-memory state.
- * Filtering, sorting and pagination are intentionally NOT done here, they
- * are derived state computed by the consuming component so the roster
- * itself is never duplicated.
- */
+// Owns the roster in state. Filtering/sorting/pagination happen in App.tsx
+// as derived values, not here, so we're not keeping duplicate copies of it.
 export function useEmployees(): UseEmployeesResult {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [status, setStatus] = useState<FetchStatus>('loading')
@@ -43,7 +34,7 @@ export function useEmployees(): UseEmployeesResult {
 
     fetchEmployees(controller.signal)
       .then((data) => {
-        const dataset = expandEmployees(data, TARGET_DATASET_SIZE)
+        const dataset = buildEmployeeRoster(data)
         nextIdRef.current = nextEmployeeId(dataset)
         setEmployees(dataset)
         setStatus('success')

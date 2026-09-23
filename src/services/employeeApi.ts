@@ -1,9 +1,9 @@
-import type { Department, Employee, EmployeeStatus } from '../types/employee'
+import type { Employee, EmployeeStatus } from '../types/employee'
 import { DEPARTMENTS, STATUSES } from '../types/employee'
+import { ROLES_BY_DEPARTMENT } from '../utils/roles'
+import { sanitizeText } from '../utils/sanitize'
 
-// Base URL is read from env config rather than hardcoded, so it can change
-// per environment without touching source. JSONPlaceholder is a public,
-// keyless mock API, so no auth token is needed here.
+// Env-configured rather than hardcoded. No auth token needed, JSONPlaceholder is public.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://jsonplaceholder.typicode.com'
 
 interface JsonPlaceholderUser {
@@ -29,37 +29,35 @@ function pickByIndex<T>(values: readonly T[], index: number): T {
   return values[index % values.length]
 }
 
-const ROLES_BY_DEPARTMENT: Record<Department, readonly string[]> = {
-  Engineering: ['Frontend Developer', 'Backend Developer', 'QA Engineer', 'DevOps Engineer'],
-  Sales: ['Account Executive', 'Sales Manager', 'Business Development Rep'],
-  Marketing: ['Marketing Specialist', 'Content Strategist', 'SEO Analyst'],
-  HR: ['HR Generalist', 'Recruiter', 'People Partner'],
-  Finance: ['Financial Analyst', 'Accountant', 'Payroll Specialist'],
-  Support: ['Support Engineer', 'Customer Success Manager', 'Help Desk Analyst'],
+/** True for a record that has enough usable data to become an Employee. */
+function isUsableRecord(user: JsonPlaceholderUser): boolean {
+  return Boolean(user && typeof user.name === 'string' && user.name.trim() && typeof user.email === 'string')
 }
 
+// Handles JSONPlaceholder fixture names like "Mrs. Dennis Schulist".
+const HONORIFIC_PREFIX = /^(mr|mrs|ms|miss|dr|prof)\.?\s+/i
+
+// Treat API data as untrusted, same as form input.
 function toEmployee(user: JsonPlaceholderUser, index: number): Employee {
-  const [firstName, ...rest] = user.name.split(' ')
-  const lastName = rest.join(' ') || user.username
+  const cleanedName = user.name.trim().replace(HONORIFIC_PREFIX, '')
+  const [firstNameRaw, ...rest] = cleanedName.split(/\s+/)
+  const lastNameRaw = rest.join(' ') || user.username || 'Unknown'
   const department = pickByIndex(DEPARTMENTS, index)
   const role = pickByIndex(ROLES_BY_DEPARTMENT[department], index)
   const status: EmployeeStatus = pickByIndex(STATUSES, index)
 
   return {
     id: user.id,
-    firstName,
-    lastName,
-    email: user.email.toLowerCase(),
+    firstName: sanitizeText(firstNameRaw),
+    lastName: sanitizeText(lastNameRaw),
+    email: sanitizeText(user.email).toLowerCase(),
     department,
     role,
     status,
   }
 }
 
-/**
- * Fetches the employee roster from the mock REST API. All UI components
- * consume this through the useEmployees hook, never fetch() directly.
- */
+// Only place fetch() is called; components go through useEmployees instead.
 export async function fetchEmployees(signal?: AbortSignal): Promise<Employee[]> {
   let response: Response
 
@@ -82,5 +80,5 @@ export async function fetchEmployees(signal?: AbortSignal): Promise<Employee[]> 
     throw new EmployeeApiError('Employee service returned an unexpected response shape.')
   }
 
-  return users.map(toEmployee)
+  return users.filter(isUsableRecord).map(toEmployee)
 }

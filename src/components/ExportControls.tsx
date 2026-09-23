@@ -5,10 +5,7 @@ interface ExportControlsProps {
   employees: Employee[]
 }
 
-/**
- * Exports whatever the table is currently showing, i.e. the filtered
- * result set the caller passes in, not the full unfiltered roster.
- */
+// Exports the filtered result set passed in, not the full roster.
 export function ExportControls({ employees }: ExportControlsProps) {
   const disabled = employees.length === 0
 
@@ -18,7 +15,7 @@ export function ExportControls({ employees }: ExportControlsProps) {
         type="button"
         onClick={() => downloadEmployeesCsv(employees)}
         disabled={disabled}
-        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-md border border-hairline-strong px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-canvas-soft disabled:cursor-not-allowed disabled:opacity-50"
       >
         Export CSV
       </button>
@@ -26,7 +23,7 @@ export function ExportControls({ employees }: ExportControlsProps) {
         type="button"
         onClick={() => downloadEmployeesJson(employees)}
         disabled={disabled}
-        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-md border border-hairline-strong px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-canvas-soft disabled:cursor-not-allowed disabled:opacity-50"
       >
         Export JSON
       </button>

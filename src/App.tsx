@@ -7,15 +7,17 @@ import { Modal } from './components/Modal'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ExportControls } from './components/ExportControls'
 import { Loading } from './components/Loading'
+import { StatRow } from './components/StatRow'
 import { useEmployees } from './hooks/useEmployees'
-import { clampPage } from './utils/helpers'
-import type { Department, Employee, EmployeeFormValues, NewEmployee } from './types/employee'
+import { useMediaQuery } from './hooks/useMediaQuery'
+import { clampPage, sortEmployees } from './utils/helpers'
+import type { Department, Employee, EmployeeFormValues, NewEmployee, SortKey, SortState } from './types/employee'
 
-// The form is only needed once a modal is opened, so it's split into its
-// own chunk instead of being part of the initial bundle.
+// Lazy-loaded: only needed once a modal opens.
 const EmployeeForm = lazy(() => import('./components/EmployeeForm').then((m) => ({ default: m.EmployeeForm })))
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const
+const DEFAULT_SORT: SortState = { key: 'id', direction: 'asc' }
 
 function toFormValues(employee: Employee): EmployeeFormValues {
   const { firstName, lastName, email, department, role, status } = employee
@@ -24,9 +26,11 @@ function toFormValues(employee: Employee): EmployeeFormValues {
 
 function App() {
   const { employees, status, error, addEmployee, updateEmployee, deleteEmployee, refetch } = useEmployees()
+  const isMobile = useMediaQuery('(max-width: 639px)')
 
   const [searchTerm, setSearchTerm] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState<Department[]>([])
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0])
 
@@ -37,7 +41,7 @@ function App() {
   const filteredEmployees = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
 
-    return employees.filter((employee) => {
+    const matching = employees.filter((employee) => {
       const matchesSearch =
         term === '' ||
         `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(term) ||
@@ -48,14 +52,14 @@ function App() {
 
       return matchesSearch && matchesDepartment
     })
-  }, [employees, searchTerm, departmentFilter])
+
+    return sortEmployees(matching, sort)
+  }, [employees, searchTerm, departmentFilter, sort])
 
   const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize))
 
-  // Search/filter results shrink the page count, and deleting the last
-  // record on a page does too. Either way the stored page number can end up
-  // past the new last page, so it's clamped here during render rather than
-  // corrected afterwards in an effect.
+  // Clamped during render instead of in an effect, so a filter/delete that
+  // shrinks the result set can't leave the page number out of range.
   const currentPage = clampPage(page, totalPages)
 
   const paginatedEmployees = useMemo(() => {
@@ -70,6 +74,14 @@ function App() {
 
   const handleDepartmentChange = useCallback((departments: Department[]) => {
     setDepartmentFilter(departments)
+    setPage(1)
+  }, [])
+
+  const handleSortChange = useCallback((key: SortKey) => {
+    setSort((current) => {
+      if (current.key !== key) return { key, direction: 'asc' }
+      return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+    })
     setPage(1)
   }, [])
 
@@ -98,12 +110,24 @@ function App() {
   }, [deletingEmployee, deleteEmployee])
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold text-slate-900">Employee Records</h1>
-          <p className="mt-1 text-sm text-slate-500">Search, filter and manage the employee roster.</p>
-        </header>
+    <div className="min-h-screen bg-canvas-soft">
+      <header className="border-b border-hairline bg-canvas">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
+          <div
+            aria-hidden="true"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white"
+          >
+            ER
+          </div>
+          <div>
+            <h1 className="text-base font-semibold text-ink">Employee Records</h1>
+            <p className="text-xs text-ink-muted">Search, filter and manage the employee roster.</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {status === 'success' && <StatRow employees={employees} />}
 
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -116,7 +140,7 @@ function App() {
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-level-1 hover:bg-primary-hover"
             >
               Add employee
             </button>
@@ -127,16 +151,16 @@ function App() {
           {status === 'success' ? `${filteredEmployees.length} employees found` : ''}
         </p>
 
-        <div className="rounded-lg bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-hairline bg-canvas p-4 shadow-level-1">
           {status === 'loading' && <Loading />}
 
           {status === 'error' && (
             <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm text-danger">{error}</p>
               <button
                 type="button"
                 onClick={refetch}
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-hairline-strong px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-canvas-soft"
               >
                 Retry
               </button>
@@ -147,12 +171,15 @@ function App() {
             <>
               <EmployeeTable
                 employees={paginatedEmployees}
+                sort={sort}
+                onSortChange={handleSortChange}
                 onEdit={setEditingEmployee}
                 onDelete={setDeletingEmployee}
+                layout={isMobile ? 'cards' : 'table'}
               />
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label className="flex items-center gap-2 text-sm text-slate-600">
+                <label className="flex items-center gap-2 text-sm text-ink-muted">
                   Rows per page
                   <select
                     value={pageSize}
@@ -160,7 +187,7 @@ function App() {
                       setPageSize(Number(event.target.value))
                       setPage(1)
                     }}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="rounded-md border border-hairline-strong px-2 py-1 text-sm text-ink focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     {PAGE_SIZE_OPTIONS.map((size) => (
                       <option key={size} value={size}>
@@ -181,11 +208,11 @@ function App() {
             </>
           )}
         </div>
-      </div>
+      </main>
 
       <Modal isOpen={isAddModalOpen} title="Add employee" onClose={() => setIsAddModalOpen(false)}>
         <Suspense fallback={<Loading label="Loading form…" />}>
-          <EmployeeForm onSubmit={handleAddSubmit} onCancel={() => setIsAddModalOpen(false)} />
+          <EmployeeForm employees={employees} onSubmit={handleAddSubmit} onCancel={() => setIsAddModalOpen(false)} />
         </Suspense>
       </Modal>
 
@@ -193,6 +220,8 @@ function App() {
         <Suspense fallback={<Loading label="Loading form…" />}>
           {editingEmployee && (
             <EmployeeForm
+              employees={employees}
+              editingId={editingEmployee.id}
               initialValues={toFormValues(editingEmployee)}
               submitLabel="Save changes"
               onSubmit={handleEditSubmit}

@@ -10,10 +10,9 @@ const CSV_COLUMNS: { key: keyof Employee; label: string }[] = [
   { key: 'status', label: 'Status' },
 ]
 
-// Spreadsheet apps treat a cell starting with any of these characters as a
-// formula. A malicious record (e.g. name "=cmd|'/c calc'!A0") exported and
-// later opened in Excel/Sheets would execute. Prefixing with a plain quote
-// keeps the value visible but forces it to be read as text, not a formula.
+// Excel/Sheets treat a cell starting with one of these as a formula, so a
+// record like "=cmd|'/c calc'!A0" would execute on open. Quote-prefixing
+// forces it to stay text.
 const FORMULA_PREFIXES = ['=', '+', '-', '@']
 
 function neutralizeFormulaInjection(value: string): string {

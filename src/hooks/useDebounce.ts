@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
 
-/**
- * Returns a copy of `value` that only updates after `delay` ms have passed
- * without `value` changing. Used to stop the search input from triggering a
- * filter recompute on every keystroke.
- */
+// Only updates once `value` stops changing for `delay` ms.
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value)
 
