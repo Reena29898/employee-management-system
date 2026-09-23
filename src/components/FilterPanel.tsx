@@ -1,0 +1,66 @@
+import { DEPARTMENTS, type Department } from '../types/employee'
+
+interface FilterPanelProps {
+  selectedDepartments: Department[]
+  onChange: (departments: Department[]) => void
+}
+
+/**
+ * A native <details>/<summary> disclosure, so the expand/collapse behaviour
+ * and keyboard support come from the browser instead of custom ARIA.
+ */
+export function FilterPanel({ selectedDepartments, onChange }: FilterPanelProps) {
+  function toggleDepartment(department: Department) {
+    const isSelected = selectedDepartments.includes(department)
+    onChange(
+      isSelected
+        ? selectedDepartments.filter((item) => item !== department)
+        : [...selectedDepartments, department],
+    )
+  }
+
+  const summaryLabel =
+    selectedDepartments.length === 0
+      ? 'Filter by department'
+      : `Department: ${selectedDepartments.length} selected`
+
+  return (
+    <details className="relative">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+        <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+          <path
+            fillRule="evenodd"
+            d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.66 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
+            clipRule="evenodd"
+          />
+        </svg>
+        {summaryLabel}
+      </summary>
+      <fieldset className="absolute z-10 mt-2 w-56 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+        <legend className="mb-2 px-0 text-xs font-semibold uppercase text-slate-500">Department</legend>
+        <div className="space-y-2">
+          {DEPARTMENTS.map((department) => (
+            <label key={department} className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={selectedDepartments.includes(department)}
+                onChange={() => toggleDepartment(department)}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              {department}
+            </label>
+          ))}
+        </div>
+        {selectedDepartments.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            className="mt-3 text-xs font-medium text-blue-600 hover:underline"
+          >
+            Clear filter
+          </button>
+        )}
+      </fieldset>
+    </details>
+  )
+}
